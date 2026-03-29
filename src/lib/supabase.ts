@@ -13,13 +13,15 @@ export interface User {
   bio?: string;
   profile_img_url?: string;
   cover_img_url?: string;
-  // เพิ่มข้อมูลเพลงเพื่อแก้ปัญหา Build Error บน Vercel
   music_url?: string;
-  music_name?: string;
+  music_name?: string; // ✅ เพิ่มเพื่อแก้ Build Error
   birthday?: string;
   occupation?: string;
   address?: string;
   workplace?: string;
+  hobbies?: any;      // ✅ เพิ่มเพื่อแก้ Build Error (Property 'hobbies' does not exist)
+  relationship_status?: string; // ✅ เพิ่มให้ครบถ้วน
+  relationship_custom_name?: string; // ✅ เพิ่มให้ครบถ้วน
   theme_color?: string;
   bg_style?: string;
   created_at: string;
@@ -87,7 +89,7 @@ export interface Notification {
   id: string;
   receiver_id: string;
   sender_id?: string;
-  // อัปเดตประเภทให้ครอบคลุมระบบแท็กและกิจกรรมต่าง ๆ
+  // ✅ อัปเดต Type ให้ตรงกับที่หน้า UI และ Database ใช้จริง
   type: 'like' | 'comment' | 'reply' | 'comment_like' | 'friend_request' | 'friend_accept' | 'post_on_profile' | 'tag_post' | 'tag_comment' | 'message';
   is_read: boolean;
   link_url?: string;
