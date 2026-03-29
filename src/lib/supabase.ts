@@ -14,14 +14,14 @@ export interface User {
   profile_img_url?: string;
   cover_img_url?: string;
   music_url?: string;
-  music_name?: string; // ✅ เพิ่มเพื่อแก้ Build Error
+  music_name?: string;
   birthday?: string;
   occupation?: string;
   address?: string;
   workplace?: string;
-  hobbies?: any;      // ✅ เพิ่มเพื่อแก้ Build Error (Property 'hobbies' does not exist)
-  relationship_status?: string; // ✅ เพิ่มให้ครบถ้วน
-  relationship_custom_name?: string; // ✅ เพิ่มให้ครบถ้วน
+  hobbies?: any; // ✅ เพิ่มเพื่อให้รองรับ hobbies
+  relationship_status?: string;
+  relationship_custom_name?: string;
   theme_color?: string;
   bg_style?: string;
   created_at: string;
@@ -35,8 +35,12 @@ export interface Post {
   content: string;
   image_url?: string;
   created_at: string;
-  author?: User;
+  author?: User; // ข้อมูลนี้มาจากการ Join table
   target?: User;
+  mood?: string | null;
+  activity?: string | null;
+  location?: string | null;
+  images?: string[] | null;
 }
 
 export interface Friendship {
@@ -89,7 +93,6 @@ export interface Notification {
   id: string;
   receiver_id: string;
   sender_id?: string;
-  // ✅ อัปเดต Type ให้ตรงกับที่หน้า UI และ Database ใช้จริง
   type: 'like' | 'comment' | 'reply' | 'comment_like' | 'friend_request' | 'friend_accept' | 'post_on_profile' | 'tag_post' | 'tag_comment' | 'message';
   is_read: boolean;
   link_url?: string;
