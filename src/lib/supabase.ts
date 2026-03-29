@@ -13,7 +13,9 @@ export interface User {
   bio?: string;
   profile_img_url?: string;
   cover_img_url?: string;
+  // เพิ่มข้อมูลเพลงเพื่อแก้ปัญหา Build Error บน Vercel
   music_url?: string;
+  music_name?: string;
   birthday?: string;
   occupation?: string;
   address?: string;
@@ -85,7 +87,8 @@ export interface Notification {
   id: string;
   receiver_id: string;
   sender_id?: string;
-  type: 'post' | 'friend_request' | 'friend_accept' | 'tag' | 'message';
+  // อัปเดตประเภทให้ครอบคลุมระบบแท็กและกิจกรรมต่าง ๆ
+  type: 'like' | 'comment' | 'reply' | 'comment_like' | 'friend_request' | 'friend_accept' | 'post_on_profile' | 'tag_post' | 'tag_comment' | 'message';
   is_read: boolean;
   link_url?: string;
   content?: string;
