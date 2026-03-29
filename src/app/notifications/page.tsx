@@ -59,7 +59,6 @@ export default function NotificationsPage() {
 
       setCurrentUser(userData);
 
-      // ดึงข้อมูลการแจ้งเตือน
       let query = supabase
         .from('notifications')
         .select('*')
@@ -75,17 +74,14 @@ export default function NotificationsPage() {
       if (notifError) throw notifError;
 
       if (notificationsData) {
-        // ดึงข้อมูลความสัมพันธ์ที่เกี่ยวข้อง (Sender, Post, Comment)
         const notificationsWithDetails = await Promise.all(
           notificationsData.map(async (notif) => {
-            // 1. ดึงข้อมูลผู้ส่ง
             const { data: sender } = await supabase
               .from('users')
               .select('*')
               .eq('id', notif.sender_id)
               .single();
 
-            // 2. ดึงข้อมูลโพสต์ถ้ามี
             let post = null;
             if (notif.post_id) {
               const { data: postData } = await supabase
@@ -96,7 +92,6 @@ export default function NotificationsPage() {
               post = postData;
             }
 
-            // 3. ดึงข้อมูลคอมเมนต์ถ้ามี
             let comment = null;
             if (notif.comment_id) {
               const { data: commentData } = await supabase
@@ -251,7 +246,6 @@ export default function NotificationsPage() {
   return (
     <NavLayout>
       <div className="max-w-3xl mx-auto px-4">
-        {/* ส่วนหัวหน้าแจ้งเตือน */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl md:text-3xl font-bold">การแจ้งเตือน</h1>
           <div className="flex items-center gap-3">
@@ -275,7 +269,6 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* ตัวกรอง */}
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setFilter('all')}
@@ -295,7 +288,6 @@ export default function NotificationsPage() {
           </button>
         </div>
 
-        {/* รายการแจ้งเตือน */}
         <div className="space-y-3">
           {notifications.length === 0 ? (
             <div className="card-minimal text-center py-12">
@@ -336,14 +328,12 @@ export default function NotificationsPage() {
                             <span className="text-gray-700">{getNotificationText(notif)}</span>
                           </p>
 
-                          {/* แสดงเนื้อหาโพสต์ที่ถูกแท็ก */}
                           {notif.post && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 italic">
                               "{notif.post.content}"
                             </p>
                           )}
 
-                          {/* แสดงเนื้อหาคอมเมนต์ที่ถูกแท็ก */}
                           {notif.comment && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 bg-gray-100 rounded-lg p-2 border-l-2 border-frog-400">
                               {notif.comment.content}
@@ -365,7 +355,6 @@ export default function NotificationsPage() {
                   </div>
                 </Link>
 
-                {/* ปุ่มลบแจ้งเตือน */}
                 <button
                   onClick={(e) => deleteNotification(e, notif.id)}
                   disabled={deletingId === notif.id}
