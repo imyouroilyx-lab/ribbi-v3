@@ -10,8 +10,9 @@ import { getRelativeTime } from '@/lib/utils';
 
 interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'reply' | 'comment_like' | 'friend_request' | 'friend_accept' | 'post_on_profile' | 'tag_post' | 'tag_comment';
+  type: 'like' | 'comment' | 'reply' | 'comment_like' | 'friend_request' | 'friend_accept' | 'post_on_profile' | 'tag_post' | 'tag_comment' | 'message';
   sender_id: string;
+  receiver_id: string;
   post_id?: string;
   comment_id?: string;
   parent_comment_id?: string;
@@ -58,29 +59,33 @@ export default function NotificationsPage() {
 
       setCurrentUser(userData);
 
+      // ดึงข้อมูลการแจ้งเตือน
       let query = supabase
         .from('notifications')
         .select('*')
         .eq('receiver_id', user.id)
-        // ✅ ไม่แสดงที่ถูกซ่อนโดย user นี้
-        .not('deleted_by', 'cs', `{${user.id}}`)
         .order('created_at', { ascending: false });
 
       if (filter === 'unread') {
         query = query.eq('is_read', false);
       }
 
-      const { data: notificationsData } = await query;
+      const { data: notificationsData, error: notifError } = await query;
+
+      if (notifError) throw notifError;
 
       if (notificationsData) {
+        // ดึงข้อมูลความสัมพันธ์ที่เกี่ยวข้อง (Sender, Post, Comment)
         const notificationsWithDetails = await Promise.all(
           notificationsData.map(async (notif) => {
+            // 1. ดึงข้อมูลผู้ส่ง
             const { data: sender } = await supabase
               .from('users')
               .select('*')
               .eq('id', notif.sender_id)
               .single();
 
+            // 2. ดึงข้อมูลโพสต์ถ้ามี
             let post = null;
             if (notif.post_id) {
               const { data: postData } = await supabase
@@ -91,6 +96,7 @@ export default function NotificationsPage() {
               post = postData;
             }
 
+            // 3. ดึงข้อมูลคอมเมนต์ถ้ามี
             let comment = null;
             if (notif.comment_id) {
               const { data: commentData } = await supabase
@@ -138,35 +144,21 @@ export default function NotificationsPage() {
         .eq('receiver_id', currentUser.id)
         .eq('is_read', false);
 
-      await loadData();
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
-  // ✅ ซ่อนการแจ้งเตือน (เพิ่ม userId เข้า deleted_by)
   const deleteNotification = async (e: React.MouseEvent, notifId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!currentUser) return;
     setDeletingId(notifId);
 
     try {
-      const { data: current } = await supabase
-        .from('notifications')
-        .select('deleted_by')
-        .eq('id', notifId)
-        .single();
-
-      const existing: string[] = current?.deleted_by || [];
-      if (!existing.includes(currentUser.id)) existing.push(currentUser.id);
-
       const { error } = await supabase
         .from('notifications')
-        .update({ 
-          deleted_by: existing,
-          is_read: true  // ✅ mark as read ด้วย
-        })
+        .delete()
         .eq('id', notifId);
 
       if (error) throw error;
@@ -178,25 +170,16 @@ export default function NotificationsPage() {
     }
   };
 
-  // ✅ ลบทั้งหมด (ซ่อนทั้งหมดสำหรับ user นี้)
   const deleteAllNotifications = async () => {
     if (!currentUser || notifications.length === 0) return;
-    if (!confirm('ต้องการลบการแจ้งเตือนทั้งหมด?')) return;
+    if (!confirm('ต้องการลบการแจ้งเตือนทั้งหมด ?')) return;
 
     try {
-      const updates = notifications.map(notif => {
-        const existing: string[] = (notif as any).deleted_by || [];
-        if (!existing.includes(currentUser.id)) existing.push(currentUser.id);
-        return supabase
-          .from('notifications')
-          .update({ 
-            deleted_by: existing,
-            is_read: true  // ✅ mark as read ด้วย
-          })
-          .eq('id', notif.id);
-      });
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('receiver_id', currentUser.id);
 
-      await Promise.all(updates);
       setNotifications([]);
     } catch (error) {
       console.error('Error deleting all notifications:', error);
@@ -214,6 +197,7 @@ export default function NotificationsPage() {
       case 'post_on_profile': return 'โพสต์ข้อความในหน้าโปรไฟล์ของคุณ';
       case 'tag_post': return 'ได้แท็กคุณในโพสต์';
       case 'tag_comment': return 'ได้แท็กคุณในความคิดเห็น';
+      case 'message': return 'ส่งข้อความถึงคุณ';
       default: return 'มีการแจ้งเตือนใหม่';
     }
   };
@@ -229,6 +213,7 @@ export default function NotificationsPage() {
       case 'post_on_profile': return <Edit className="w-5 h-5 text-orange-500" />;
       case 'tag_post': 
       case 'tag_comment': return <AtSign className="w-5 h-5 text-frog-600" />;
+      case 'message': return <MessageCircle className="w-5 h-5 text-blue-500" />;
       default: return <Bell className="w-5 h-5 text-gray-500" />;
     }
   };
@@ -237,6 +222,7 @@ export default function NotificationsPage() {
     if (notif.type === 'friend_request' || notif.type === 'friend_accept') {
       return `/profile/${notif.sender?.username}`;
     }
+    if (notif.type === 'message') return `/messages`;
     if (notif.post_id) return `/post/${notif.post_id}`;
     return '#';
   };
@@ -265,7 +251,7 @@ export default function NotificationsPage() {
   return (
     <NavLayout>
       <div className="max-w-3xl mx-auto px-4">
-        {/* Header */}
+        {/* ส่วนหัวหน้าแจ้งเตือน */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl md:text-3xl font-bold">การแจ้งเตือน</h1>
           <div className="flex items-center gap-3">
@@ -289,7 +275,7 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ตัวกรอง */}
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setFilter('all')}
@@ -309,7 +295,7 @@ export default function NotificationsPage() {
           </button>
         </div>
 
-        {/* Notifications List */}
+        {/* รายการแจ้งเตือน */}
         <div className="space-y-3">
           {notifications.length === 0 ? (
             <div className="card-minimal text-center py-12">
@@ -325,7 +311,7 @@ export default function NotificationsPage() {
                   href={getNotificationLink(notif)}
                   onClick={() => !notif.is_read && markAsRead(notif.id)}
                   className={`block card-minimal hover:bg-gray-50 transition pr-10 ${
-                    !notif.is_read ? 'bg-frog-50 border-l-4 border-frog-500' : ''
+                    !notif.is_read ? 'bg-frog-50 border-l-4 border-frog-500 shadow-sm' : ''
                   }`}
                 >
                   <div className="flex gap-3 md:gap-4">
@@ -350,14 +336,16 @@ export default function NotificationsPage() {
                             <span className="text-gray-700">{getNotificationText(notif)}</span>
                           </p>
 
+                          {/* แสดงเนื้อหาโพสต์ที่ถูกแท็ก */}
                           {notif.post && (
-                            <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2">
-                              {notif.post.content}
+                            <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 italic">
+                              "{notif.post.content}"
                             </p>
                           )}
 
+                          {/* แสดงเนื้อหาคอมเมนต์ที่ถูกแท็ก */}
                           {notif.comment && (
-                            <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 bg-gray-100 rounded-lg p-2">
+                            <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 bg-gray-100 rounded-lg p-2 border-l-2 border-frog-400">
                               {notif.comment.content}
                             </p>
                           )}
@@ -377,7 +365,7 @@ export default function NotificationsPage() {
                   </div>
                 </Link>
 
-                {/* ✅ ปุ่มลบ — แสดงตลอดบน mobile, hover บน desktop */}
+                {/* ปุ่มลบแจ้งเตือน */}
                 <button
                   onClick={(e) => deleteNotification(e, notif.id)}
                   disabled={deletingId === notif.id}
